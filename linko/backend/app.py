@@ -17,12 +17,16 @@ from database import get_db, init_db
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 FRONTEND_DIR = os.path.join(os.path.dirname(BASE_DIR), "frontend")
-UPLOAD_DIR = os.path.join(BASE_DIR, "uploads")
+DATA_DIR = os.environ.get("LINKO_DATA_DIR", BASE_DIR)
+os.makedirs(DATA_DIR, exist_ok=True)
+UPLOAD_DIR = os.path.join(DATA_DIR, "uploads")
 os.makedirs(UPLOAD_DIR, exist_ok=True)
 
 app = Flask(__name__, static_folder=FRONTEND_DIR, static_url_path="")
-app.secret_key = "please-change-this-secret-key-in-production"
+app.secret_key = os.environ.get("SECRET_KEY", "dev-only-change-me")
+app.config["SESSION_COOKIE_HTTPONLY"] = True
 app.config["SESSION_COOKIE_SAMESITE"] = "Lax"
+app.config["SESSION_COOKIE_SECURE"] = os.environ.get("SESSION_COOKIE_SECURE", "0") == "1"
 # Keep people logged in across browser restarts, so they only need to sign in once.
 app.config["PERMANENT_SESSION_LIFETIME"] = timedelta(days=90)
 app.config["MAX_CONTENT_LENGTH"] = 60 * 1024 * 1024  # 60 مگابایت سقف حجم هر فایل
@@ -1959,10 +1963,13 @@ def on_call_reject(data):
     emit("call_rejected", {"from_user_id": uid}, room=f"user_{to_user_id}")
 
 
+init_db()
+
+
 if __name__ == "__main__":
-    init_db()
+    port = int(os.environ.get("PORT", "5000"))
     print("=" * 60)
     print("سرور لینکو (Linko) در حال اجراست")
-    print("آدرس: http://127.0.0.1:5000")
+    print(f"آدرس: http://127.0.0.1:{port}")
     print("=" * 60)
-    socketio.run(app, host="0.0.0.0", port=5000, debug=True, allow_unsafe_werkzeug=True)
+    socketio.run(app, host="0.0.0.0", port=port, debug=False)
